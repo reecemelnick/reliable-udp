@@ -1,1 +1,0 @@
-Result<Infallible, std::io::Error>

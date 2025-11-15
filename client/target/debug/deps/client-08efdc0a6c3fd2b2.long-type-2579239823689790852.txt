@@ -1,0 +1,3 @@
+Unique<(dyn std::error::Error + 'static)>
+Box<(dyn std::error::Error + 'static)>
+Result<(), Box<(dyn std::error::Error + 'static)>>

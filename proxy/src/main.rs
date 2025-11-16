@@ -61,7 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let mut rng = rand::thread_rng();
-        let delay = rng.gen_range(3000..=5000);
+        let delay = rng.gen_range(1500..=2000);
         
         let value = received_data.clone();
         let sock_clone = sock.clone();

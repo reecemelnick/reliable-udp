@@ -1,0 +1,19 @@
+# Rust build output
+/target/
+
+# Cargo lock file (optional for libraries)
+# Cargo.lock
+
+# Ignore editor files
+**/*.swp
+**/*.swo
+*.rs.bk
+
+# VSCode settings
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log

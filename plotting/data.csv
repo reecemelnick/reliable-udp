@@ -1,4 +1,4 @@
 Program,Packets_Sent,Packets_Received,Packets_Ignored
-Client,0,0,0
-Proxy,0,0,0
-Server,0,0,0
+Client,2,1,1
+Proxy,4,4,0
+Server,2,2,0

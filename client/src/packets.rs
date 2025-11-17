@@ -1,7 +1,6 @@
 use tokio::sync::{mpsc, Mutex};
-use tokio::net::UdpSocket;
 use std::sync::Arc;
-use csv_updater::{increment_packet_count, reset_csv};
+use csv_updater::increment_packet_count;
 
 use crate::network::Packet;
 use crate::network::send_and_wait;
@@ -37,11 +36,9 @@ pub async fn process_ack(seq: i32, in_flight: &Arc<Mutex<Vec<Packet>>>) {
 }
 
 pub async fn handle_timeout(seq: i32, state: &ClientState) {
-    println!("Timeout for seq {}", seq);
 
     let in_flight_packets = Arc::clone(&state.in_flight);
     let sock = Arc::clone(&state.sock);
-    let proxy_addr = state.proxy_addr.clone();
 
     // Look up the packet in the in-flight list
     if let Some(packet) = {
@@ -50,7 +47,7 @@ pub async fn handle_timeout(seq: i32, state: &ClientState) {
     } {
         
         tokio::spawn(async move {
-            crate::network::retransmit_packet(&sock, &packet, &in_flight_packets, seq).await.unwrap();
+            crate::network::retransmit_packet(&sock, &packet).await.unwrap();
         });
 
     } else {

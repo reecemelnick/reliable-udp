@@ -5,10 +5,11 @@ use fs2::FileExt;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct PacketStats {
-    Program: String,
-    Packets_Sent: u32,
-    Packets_Received: u32,
-    Packets_Ignored: u32,
+    program: String,
+    packets_sent: u32,
+    packets_received: u32,
+    packets_ignored: u32,
+    packets_dropped: u32
 }
 
 pub fn reset_csv() -> Result<(), Box<dyn Error>> {
@@ -24,9 +25,10 @@ pub fn reset_csv() -> Result<(), Box<dyn Error>> {
 
     // Increment packets for "Client"
     for record in &mut records {
-            record.Packets_Sent = 0;
-            record.Packets_Received = 0;
-            record.Packets_Ignored = 0;
+            record.packets_sent = 0;
+            record.packets_received = 0;
+            record.packets_ignored = 0;
+            record.packets_dropped = 0;
     }
 
     let tmp_path = "../plotting/data.csv.tmp";
@@ -44,7 +46,6 @@ pub fn reset_csv() -> Result<(), Box<dyn Error>> {
 
     std::fs::rename(tmp_path, "../plotting/data.csv")?;
 
-    println!("CSV updated successfully!");
     Ok(())
 }
 
@@ -53,6 +54,7 @@ pub fn increment_packet_count(
     sent_inc: u32,
     received_inc: u32,
     ignored_inc: u32,
+    dropped_inc: u32,
 ) -> Result<(), Box<dyn Error>> {
     let lock = File::create("../plotting/data.csv.lock")?;
     lock.lock_exclusive()?;
@@ -66,10 +68,11 @@ pub fn increment_packet_count(
 
     // Increment packets for "Client"
     for record in &mut records {
-        if record.Program == program_name {
-            record.Packets_Sent += sent_inc;
-            record.Packets_Received += received_inc;
-            record.Packets_Ignored += ignored_inc;
+        if record.program == program_name {
+            record.packets_sent += sent_inc;
+            record.packets_received += received_inc;
+            record.packets_ignored += ignored_inc;
+            record.packets_dropped += dropped_inc;
         }
     }
 
@@ -87,7 +90,5 @@ pub fn increment_packet_count(
     }
 
     std::fs::rename(tmp_path, "../plotting/data.csv")?;
-
-    println!("CSV updated successfully!");
     Ok(())
 }

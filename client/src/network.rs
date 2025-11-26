@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::{mpsc, Mutex};
-use csv_updater::increment_packet_count;
+// use csv_updater::increment_packet_count;
+use update_csv::update_csv;
 
 use crate::Command;
 use crate::check_for_ack;
@@ -29,7 +30,6 @@ pub async fn read_from_proxy(sock: Arc<UdpSocket>, tx: tokio::sync::mpsc::Sender
             Ok((len, _addr)) => {
                 let received_data = &buf[..len];
                 let sequence_number_int = i32::from_ne_bytes(received_data.try_into().unwrap());
-                println!("Got ack number: {}", sequence_number_int);
 
                 if tx.send(Command::Ack(sequence_number_int)).await.is_err() {
                     println!("Client actor closed, stopping read_from_proxy");
@@ -44,7 +44,7 @@ pub async fn read_from_proxy(sock: Arc<UdpSocket>, tx: tokio::sync::mpsc::Sender
     }  
 }
 
-pub async fn send_and_wait(sock: &Arc<UdpSocket>, proxy_addr: &str, seq_number: i32, user_input: String, open_packets: Arc<Mutex<Vec<Packet>>>, tx: mpsc::Sender<Command>,) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn send_and_wait(sock: &Arc<UdpSocket>, proxy_addr: &String, seq_number: i32, user_input: String, open_packets: Arc<Mutex<Vec<Packet>>>, tx: mpsc::Sender<Command>, max_retries: i32, timeout: usize) -> Result<(), Box<dyn std::error::Error>> {
     let trimmed_input = user_input.trim();
 
     let current_sequence_value = seq_number;
@@ -60,7 +60,8 @@ pub async fn send_and_wait(sock: &Arc<UdpSocket>, proxy_addr: &str, seq_number: 
 
     // send to proxy
     sock.send_to(&serialized_packet, proxy_addr).await?;
-    increment_packet_count("Client", 1, 0, 0).unwrap();
+    // increment_packet_count("Client", 1, 0, 0, 0).unwrap();
+    update_csv(("Client".to_string(), 1, 0, 0, 0));
 
     // access shared packet vector
     let mut guard = open_packets.lock().await;
@@ -70,16 +71,16 @@ pub async fn send_and_wait(sock: &Arc<UdpSocket>, proxy_addr: &str, seq_number: 
     let open_packets_clone = Arc::clone(&open_packets);
     let tx_clone = tx.clone();
     tokio::spawn(async move {
-        let _ = check_for_ack(open_packets_clone, current_sequence_value, tx_clone).await;
+        let _ = check_for_ack(open_packets_clone, current_sequence_value, tx_clone, max_retries, timeout).await;
     });
 
     Ok(())
 }
 
-pub async fn retransmit_packet(sock: &Arc<UdpSocket>, packet: &Packet) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn retransmit_packet(sock: &Arc<UdpSocket>, packet: &Packet, proxy_addr: String) -> Result<(), Box<dyn std::error::Error>> {
     let serialized_packet = serialize_packet(&packet).await;
-    let proxy_addr = "127.0.0.1:8080";
     sock.send_to(&serialized_packet, proxy_addr).await?;
-    increment_packet_count("Client", 1, 0, 0).unwrap();
+    // increment_packet_count("Client", 1, 0, 0, 0).unwrap();
+    update_csv(("Client".to_string(), 1, 0, 0, 0));
     Ok(())
 }

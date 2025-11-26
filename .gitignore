@@ -1,19 +1,62 @@
-# Rust build output
+# Rust/Cargo
 /target/
+**/*.rs.bk
 
-# Cargo lock file (optional for libraries)
+# Cargo.lock is usually tracked for binaries, ignored for libraries
+# Uncomment if your project is a library
 # Cargo.lock
 
-# Ignore editor files
-**/*.swp
-**/*.swo
-*.rs.bk
-
-# VSCode settings
+# IDEs and editors
 .vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
 
 # MacOS
 .DS_Store
 
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
 # Logs
 *.log
+
+# Temporary files
+*.tmp
+*.swp
+# Rust/Cargo
+/target/
+**/*.rs.bk
+
+# Cargo.lock is usually tracked for binaries, ignored for libraries
+# Uncomment if your project is a library
+# Cargo.lock
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# MacOS
+.DS_Store
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp

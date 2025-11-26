@@ -5,4 +5,7 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
-csv_updater = { path = "../csv_updater" }
+update_csv = { path = "../update_csv" }
+eframe = { version = "0.31.1", features = [
+    "default"
+] }

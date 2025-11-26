@@ -7,4 +7,7 @@ edition = "2024"
 tokio = { version = "1.0", features = ["full"] }
 log = "0.4.14"
 simple_logger = "4.0.0"
-csv_updater = { path = "../csv_updater" }
+update_csv = { path = "../update_csv" }
+eframe = { version = "0.31.1", features = [
+    "default"
+] }

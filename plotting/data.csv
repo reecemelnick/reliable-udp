@@ -1,4 +1,4 @@
-Program,Packets_Sent,Packets_Received,Packets_Ignored
-Client,2,1,1
-Proxy,4,4,0
-Server,2,2,0
+program,packets_sent,packets_received,packets_ignored,packets_dropped
+Client,31,8,0,0
+Proxy,26,49,0,23
+Server,18,18,0,0

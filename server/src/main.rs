@@ -11,6 +11,7 @@ mod forms;
 use crate::gui::App;
 use crate::forms::{FormSubmission};
 
+#[derive(Debug)]
 struct Acknowledgement {
     sequence_number: i32,
 }
@@ -28,10 +29,7 @@ async fn read_from_proxy(sock: Arc<UdpSocket>, log_tx: mpsc::Sender<String>) -> 
 
     loop {
 
-        // MESSAGE CAN ONLY PRINT ONCE!!!
-
         let mut buf = [0; 1024];
-        let mut printed = false;
 
         match sock.recv_from(&mut buf).await {
             Ok((len, proxy_addr)) => {
@@ -39,11 +37,9 @@ async fn read_from_proxy(sock: Arc<UdpSocket>, log_tx: mpsc::Sender<String>) -> 
                 let sequence_number_int = i32::from_ne_bytes(sequence_number.try_into().unwrap());
 
                 if sequence_number_int < recently_received_seq {
-                    // print out for duplicate packet on the server
                     println!("Ignoring duplicate packet! Sequence Number was: {}. Expected: {} or {}", sequence_number_int, recently_received_seq, recently_received_seq + 1);
                     let _ = log_tx.send(format!("Ignoring duplicate packet! Sequence Number was: {}. Expected: {} or {}", sequence_number_int, recently_received_seq, recently_received_seq + 1)).await;
-                    // increment_packet_count("Server", 0, 0, 1, 0).unwrap();
-                    update_csv(("Server".to_string(), 0, 0, 1, 0));
+                    let _ = update_csv(("Server".to_string(), 0, 0, 1, 0));
                     continue;
                 }
 
@@ -54,13 +50,13 @@ async fn read_from_proxy(sock: Arc<UdpSocket>, log_tx: mpsc::Sender<String>) -> 
                     let _ = log_tx.send(format!("{:?} had sequence number: {:?}", received_message_string, sequence_number_int)).await;
                 }
 
-                // increment_packet_count("Server", 0, 1, 0, 0).unwrap();
-                update_csv(("Server".to_string(), 0, 1, 0, 0));
+                let _ = update_csv(("Server".to_string(), 0, 1, 0, 0));
 
                 let ack = Acknowledgement {
                     sequence_number: sequence_number_int,
                 };
 
+                let _ = log_tx.send(format!("Acking the client with {:?}", ack)).await;
                 let _write_result = write_to_proxy(&sock, &proxy_addr, ack).await;
                 
                 expected_sequence_number = sequence_number_int + 1;
@@ -77,8 +73,7 @@ async fn read_from_proxy(sock: Arc<UdpSocket>, log_tx: mpsc::Sender<String>) -> 
 async fn write_to_proxy(sock: &Arc<UdpSocket>, proxy_addr: &SocketAddr, ack: Acknowledgement) -> Result<(), Box<dyn std::error::Error>> {
     let serialized_ack = serialize_ack(ack).await;
     sock.send_to(&serialized_ack, proxy_addr).await?;
-    // increment_packet_count("Server", 1, 0, 0, 0).unwrap();
-    update_csv(("Server".to_string(), 1, 0, 0, 0));
+    let _ = update_csv(("Server".to_string(), 1, 0, 0, 0));
     Ok(())
 }
 

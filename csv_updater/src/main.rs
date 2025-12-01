@@ -6,14 +6,12 @@ use csv_updater::increment_packet_count;
 use csv_updater::reset_csv;
 
 #[derive(Serialize, Deserialize, Debug)]
-struct MyData {
+struct UpdateData {
     values: (String, u32, u32, u32, u32),
 }
 
 fn handle_client() -> Result<(), Box<ErrorKind>> {
     let listener = TcpListener::bind("127.0.0.1:8000")?; // pass in IP
-
-    let mut request = String::new(); 
     
     for stream in listener.incoming() {
         let mut stream = stream?;
@@ -25,15 +23,15 @@ fn handle_client() -> Result<(), Box<ErrorKind>> {
         let mut buffer = vec![0u8; data_len as usize];
         stream.read_exact(&mut buffer)?;
 
-        let received_data: MyData = bincode::deserialize(&buffer)?;
+        let received_data: UpdateData = bincode::deserialize(&buffer)?;
         println!("Received: {:?}", received_data);
-        increment_packet_count(&received_data.values.0.to_string(), received_data.values.1, received_data.values.2, received_data.values.3, received_data.values.4);
+        let _ = increment_packet_count(&received_data.values.0.to_string(), received_data.values.1, received_data.values.2, received_data.values.3, received_data.values.4);
     }
     Ok(())
 }
 
 fn main() {
-    reset_csv();
+    let _ = reset_csv();
     match handle_client() {
         Ok(res) => res,
         Err(err) => panic!("Failed to listen to connections: {}", err),

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::{mpsc, Mutex};
-// use csv_updater::increment_packet_count;
 use update_csv::update_csv;
 
 use crate::Command;
@@ -60,8 +59,7 @@ pub async fn send_and_wait(sock: &Arc<UdpSocket>, proxy_addr: &String, seq_numbe
 
     // send to proxy
     sock.send_to(&serialized_packet, proxy_addr).await?;
-    // increment_packet_count("Client", 1, 0, 0, 0).unwrap();
-    update_csv(("Client".to_string(), 1, 0, 0, 0));
+    let _ = update_csv(("Client".to_string(), 1, 0, 0, 0));
 
     // access shared packet vector
     let mut guard = open_packets.lock().await;
@@ -80,7 +78,6 @@ pub async fn send_and_wait(sock: &Arc<UdpSocket>, proxy_addr: &String, seq_numbe
 pub async fn retransmit_packet(sock: &Arc<UdpSocket>, packet: &Packet, proxy_addr: String) -> Result<(), Box<dyn std::error::Error>> {
     let serialized_packet = serialize_packet(&packet).await;
     sock.send_to(&serialized_packet, proxy_addr).await?;
-    // increment_packet_count("Client", 1, 0, 0, 0).unwrap();
-    update_csv(("Client".to_string(), 1, 0, 0, 0));
+    let _ = update_csv(("Client".to_string(), 1, 0, 0, 0));
     Ok(())
 }

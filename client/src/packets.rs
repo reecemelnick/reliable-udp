@@ -27,15 +27,13 @@ pub async fn process_ack(seq: i32, in_flight: &Arc<Mutex<Vec<Packet>>>, log_tx: 
     if guard.iter().any(|p| p.sequence_number == seq) {
         println!("Received ACK for seq {}", seq);
         let _ = log_tx.send(format!("Got ACK number: {}", seq)).await;
-        // increment_packet_count("Client", 0, 1, 0, 0).unwrap();
-        update_csv(("Client".to_string(), 0, 1, 0, 0));
+        let _ = update_csv(("Client".to_string(), 0, 1, 0, 0));
 
         guard.retain(|p| p.sequence_number != seq);
     } else {
         println!("Duplicate ACK");
-        let _ = log_tx.send(format!("Duplicate ACK: {}. Dropping...", seq)).await;
-        // increment_packet_count("Client", 0, 0, 1, 0).unwrap();
-        update_csv(("Client".to_string(), 0, 0, 1, 0));
+        let _ = log_tx.send(format!("Duplicate ACK: {}. Ignoring...", seq)).await;
+        let _ = update_csv(("Client".to_string(), 0, 0, 1, 0));
     }
 }
 
@@ -51,7 +49,6 @@ pub async fn handle_timeout(seq: i32, state: &ClientState, log_tx: mpsc::Sender<
         let guard = in_flight_packets.lock().await;
         guard.iter().find(|p| p.sequence_number == seq).cloned()
     } {
-        
         tokio::spawn(async move {
             crate::network::retransmit_packet(&sock, &packet, proxy_addr).await.unwrap();
         });

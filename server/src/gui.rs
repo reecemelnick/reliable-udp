@@ -12,6 +12,7 @@ pub struct App {
     pub form_tx: mpsc::Sender<FormSubmission>,
     pub log_ip: String,
     pub log_port: String,
+    pub error_msg: Option<String>,
 }
 
 impl eframe::App for App {
@@ -21,15 +22,15 @@ impl eframe::App for App {
         CentralPanel::default().show(ctx, |ui| {
             self.show_from(ui);
             ui.separator();
-            let MAX_MESSAGES = 100;
+            let max_messages = 100;
             if let Some(rx) = &mut self.log_rx {
                 while let Ok(msg) = rx.try_recv() {
                     self.messages.push(msg);
                 }
             }
 
-            if self.messages.len() > MAX_MESSAGES {
-                let excess = self.messages.len() - MAX_MESSAGES;
+            if self.messages.len() > max_messages {
+                let excess = self.messages.len() - max_messages;
                 self.messages.drain(0..excess);
             }
 
@@ -50,6 +51,7 @@ impl App {
             form_tx: form_tx,
             log_ip: String::new(),
             log_port: String::new(),
+            error_msg: None,
         }
     }
 }
@@ -66,8 +68,42 @@ impl App {
                 ui.text_edit_singleline(&mut self.log_ip);
                 ui.label("Log Port");
                 ui.text_edit_singleline(&mut self.log_port);
+
+                if let Some(err) = &self.error_msg {
+                    ui.colored_label(egui::Color32::RED, err);
+                }
+
                 ui.horizontal(|ui| {
                     if ui.button("Submit").clicked() {
+
+                        if !self.listen_ip.is_empty() &&
+                            self.listen_ip.parse::<std::net::IpAddr>().is_err()
+                        {
+                            self.error_msg = Some("Invalid Listen IP".into());
+                            return;
+                        }
+
+                        if !self.log_ip.is_empty() &&
+                            self.log_ip.parse::<std::net::IpAddr>().is_err()
+                        {
+                            self.error_msg = Some("Invalid Log IP".into());
+                            return;
+                        }
+
+                        if !self.listen_port.is_empty() &&
+                            self.listen_port.parse::<u16>().is_err()
+                        {
+                            self.error_msg = Some("Listen Port must be a valid port".into());
+                            return;
+                        }
+
+                        if !self.log_port.is_empty() &&
+                            self.log_port.parse::<u16>().is_err()
+                        {
+                            self.error_msg = Some("Log Port must be a valid port".into());
+                            return;
+                        }
+
                         let msg = FormSubmission {
                             listen_ip: self.listen_ip.clone(),
                             listen_port: self.listen_port.clone(),

@@ -1,0 +1,27 @@
+digraph state_machine {
+    rankdir=LR;
+    node [shape=box];
+
+    START -> READ_INPUTS [label="user inputs settings"];
+
+    READ_INPUTS -> CONFIGURE_SETTINGS [label="make FormSubmission"];
+
+    CONFIGURE_SETTINGS -> ACTOR [label="spawn actor"];
+    CONFIGURE_SETTINGS -> READ_INPUT [label="spawn read_input_from_user"];
+    CONFIGURE_SETTINGS -> READ_PROXY [label="spawn read_from_proxy"];
+
+    ACTOR -> HANDLE_SEND [label="SendMessage command received"];
+    ACTOR -> PROCESS_ACK [label="Ack command received"];
+    ACTOR -> HANDLE_TIMEOUT [label="Timeout command received"];
+
+    HANDLE_SEND -> SEND_MESSAGE [label="Call send_and_wait"];
+    SEND_MESSAGE -> CHECK_FOR_ACK [label="check_for_ack"];
+
+    CHECK_FOR_ACK -> ACTOR [label="Sends Timeout command"];
+    CHECK_FOR_ACK -> END [label="Max timeouts exceeded"];
+
+    HANDLE_TIMEOUT -> RETRANSMIT [label="Retransmit packet"];
+
+    READ_INPUT -> ACTOR [label="Sends SendMessage command"];
+    READ_PROXY -> ACTOR [label="Sends Ack command"];
+}

@@ -6,7 +6,7 @@ use std::sync::OnceLock;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct MyData {
+struct UpdateData {
     values: (String, u32, u32, u32, u32),
 }
 
@@ -21,7 +21,7 @@ pub fn update_csv(update_values: (String, u32, u32, u32, u32)) -> Result<(), Box
     let addr = LOG_SERVER_ADDR.get().expect("log server not set");
 
     let mut stream = TcpStream::connect(addr)?;
-    let data = MyData {
+    let data = UpdateData {
         values: update_values,
     };
     let serialized = bincode::serialize(&data)?;

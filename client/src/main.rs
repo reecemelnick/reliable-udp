@@ -3,7 +3,6 @@ use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tokio::sync::mpsc;
 use update_csv::set_log_server;
-use tokio::io::{self, AsyncBufReadExt, BufReader};
 use tokio::net::UdpSocket;
 
 mod actor;
@@ -31,14 +30,12 @@ async fn check_for_ack(open_packets: Arc<Mutex<Vec<Packet>>>, seq: i32, tx: mpsc
         // this is the timeout to check for retransmission
         sleep(Duration::from_millis(timeout.try_into().unwrap())).await;
 
-        let mut remove_packet = false;
-
         {
             let mut guard = open_packets.lock().await;
             if let Some(packet) = guard.iter_mut().find(|p| p.sequence_number == seq) {
                 if packet.retries >= max_retries {
-                    println!("Giving up on seq {}", seq);
-                    remove_packet = true;
+                    println!("Giving up on packet {}", seq);
+                    std::process::exit(0);
                 } else {
                     println!("Timeout for seq {}, retransmitting...", seq);
                     packet.retries += 1;
@@ -48,21 +45,11 @@ async fn check_for_ack(open_packets: Arc<Mutex<Vec<Packet>>>, seq: i32, tx: mpsc
                 break; // ACK received
             }
         }
-        
-        // flags set to true we remove the packet from in flight list
-        if remove_packet {
-            let mut guard = open_packets.lock().await;
-            guard.retain(|p| p.sequence_number != seq);
-            break;
-        }
     }
     Ok(())
 }
 
 async fn read_input_from_user(tx: tokio::sync::mpsc::Sender<Command>, mut input_rx: mpsc::Receiver<String>) {
-    // tokios aysnc input reader 
-    let stdin = BufReader::new(io::stdin());
-    let mut lines = stdin.lines();
 
     while let Some(line) = input_rx.recv().await {
         let trimmed = line.trim();
@@ -105,7 +92,7 @@ async fn main() {
     );
 }
 
-async fn start_udp_client(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::Sender<String>, mut input_rx: mpsc::Receiver<String>) -> Result<(), Box<dyn std::error::Error>> {
+async fn start_udp_client(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::Sender<String>, input_rx: mpsc::Receiver<String>) -> Result<(), Box<dyn std::error::Error>> {
     
     let mut client_config: Option<FormSubmission> = None;
     // Take config from gui before starting
@@ -122,11 +109,12 @@ async fn start_udp_client(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::
         .expect("Expected FormSubmission from GUI")
         .with_defaults();
 
-    println!("Proxy Config: {:#?}", config);
+    println!("Client Config: {:#?}", config);
 
     set_log_server(config.log_ip.to_string(), config.log_port.to_string());
+    let client_addr = format!("{}:{}", config.listen_ip.to_string(), config.listen_port.to_string());
     
-    let sock = Arc::new(UdpSocket::bind("127.0.0.1:7080").await?);
+    let sock = Arc::new(UdpSocket::bind(client_addr).await?);
 
     let (tx, rx) = mpsc::channel(100); // for the actor
 
@@ -138,7 +126,6 @@ async fn start_udp_client(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::
     });
 
     let tx_input = tx.clone();
-    let log_tx_clone = log_tx.clone();
     tokio::spawn(async move {
         read_input_from_user(tx_input, input_rx).await;
     });

@@ -16,14 +16,11 @@ pub fn reset_csv() -> Result<(), Box<dyn Error>> {
     let lock = File::create("../plotting/data.csv.lock")?;
     lock.lock_exclusive()?;
 
-    // Read the CSV file
     let file = File::open("../plotting/data.csv")?;
     let mut reader = csv::Reader::from_reader(file);
 
-    // Collect all rows into memory
     let mut records: Vec<PacketStats> = reader.deserialize().collect::<Result<_, _>>()?;
 
-    // Increment packets for "Client"
     for record in &mut records {
             record.packets_sent = 0;
             record.packets_received = 0;

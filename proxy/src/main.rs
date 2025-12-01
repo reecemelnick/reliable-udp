@@ -11,7 +11,6 @@ use update_csv::update_csv;
 use update_csv::set_log_server;
 use tokio::sync::mpsc;
 use std::net::SocketAddr;
-use std::net::{IpAddr, Ipv4Addr};
 
 mod gui;
 mod forms;
@@ -20,31 +19,22 @@ use crate::forms::{FormSubmission};
 
 async fn foward_to_server(sock: &UdpSocket, data: &[u8], log_tx: mpsc::Sender<String>, server_addr: String) -> io::Result<()> {
     let _ = log_tx.send(format!("Forwarding {:?} to {}", data, server_addr)).await;
-
-    let len = sock.send_to(data, server_addr).await?;
-    println!("{:?} bytes sent to server", len);
-    // increment_packet_count("Proxy", 1, 0, 0, 0).unwrap();
-    update_csv(("Proxy".to_string(), 1, 0, 0, 0));
+    let _len = sock.send_to(data, server_addr).await?;
+    let _ =  update_csv(("Proxy".to_string(), 1, 0, 0, 0));
     Ok(())
     
 }
 
 async fn foward_to_client(sock: &UdpSocket, data: &[u8], log_tx: mpsc::Sender<String>, client_addr: SocketAddr) -> io::Result<()> {
     let _ = log_tx.send(format!("Fowarding {:?} to {}", data, client_addr)).await;
-
-    let len = sock.send_to(data, client_addr).await?;
-    println!("{:?} bytes sent to client", len);
-    let _ = log_tx.send(format!("{:?} bytes sent to client", len)).await;
-    // increment_packet_count("Proxy", 1, 0, 0, 0).unwrap();
-    update_csv(("Proxy".to_string(), 1, 0, 0, 0));
-    
+    let _len = sock.send_to(data, client_addr).await?;
+    let _ = update_csv(("Proxy".to_string(), 1, 0, 0, 0));
     Ok(())
 }
 
 #[tokio::main]
 async fn main() {
 
-    // let icon_data = load_icon("path/to/your/icon.png");
     let (tx, rx) = mpsc::channel::<FormSubmission>(128);
     let (log_tx, log_rx) = mpsc::channel::<String>(128);
 
@@ -58,7 +48,6 @@ async fn main() {
     });
     
     let options = eframe::NativeOptions {
-        // icon_data: Some(icon_data),
         viewport: eframe::egui::ViewportBuilder::default()
             .with_resizable(true)
             .with_inner_size([520.0, 840.0]),
@@ -81,7 +70,7 @@ async fn start_udp_proxy(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::S
             proxy_config = Some(msg);
         }
         None => {
-            println!("Nothing here");
+            println!("No config set");
         }
     }
 
@@ -104,7 +93,6 @@ async fn start_udp_proxy(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::S
         let mut buf = [0; 1024];
         let (len, sender_addr) = sock.recv_from(&mut buf).await?;
         if client_addr == None {
-            println!("Setting client address...");
             client_addr = Some(sender_addr);
         }
 
@@ -112,8 +100,7 @@ async fn start_udp_proxy(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::S
         let port_num = sender_addr.port();
 
         let _ = log_tx.send(format!("Received packet {:?} from {}", received_data, sender_addr)).await;
-        // increment_packet_count("Proxy", 0, 1, 0, 0)?;
-        update_csv(("Proxy".to_string(), 0, 1, 0, 0));
+        let _ = update_csv(("Proxy".to_string(), 0, 1, 0, 0));
 
         let shared_v = client_v.clone();
         {
@@ -126,21 +113,26 @@ async fn start_udp_proxy(mut rx: mpsc::Receiver<FormSubmission>, log_tx: mpsc::S
         let server_addr_clone = server_addr.clone();
         tokio::spawn(async move {
             let value = received_data.clone();
-            println!("port: {:?}, target {:?}", port_num, config.target_port);
 
             if port_num != config.target_port {
                 if chopping_block(config.client_drop) {
                     if !delay_decider(config.client_delay) {
+                        let _ = log_tx_clone.send(format!("Delaying packet from {}", sender_addr)).await;
                         sleep(Duration::from_millis(random_delay(config.client_delay_time_min, config.client_delay_time_max).await.try_into().unwrap())).await;
-                    }
+                    } 
                     let _ = foward_to_server(&sock_clone, &received_data, log_tx_clone, server_addr_clone).await;
+                } else {
+                    let _ = log_tx_clone.send(format!("Dropping packet from {}", sender_addr)).await;
                 }
             } else if port_num == config.target_port {
                 if chopping_block(config.server_drop) {
                     if !delay_decider(config.server_delay) {
+                        let _ = log_tx_clone.send(format!("Delaying packet from {}", sender_addr)).await;
                         sleep(Duration::from_millis(random_delay(config.server_delay_time_min, config.server_delay_time_max).await.try_into().unwrap())).await;
                     }
                     let _ = foward_to_client(&sock_clone, &received_data, log_tx_clone, client_addr.unwrap()).await;
+                } else {
+                    let _ = log_tx_clone.send(format!("Dropping packet from {}", sender_addr)).await;
                 }
             }
 
@@ -160,9 +152,9 @@ async fn random_delay(min: usize, max: usize) -> usize {
 
 fn delay_decider(delay_chance: i32) -> bool {
     let mut rng = rand::thread_rng();
-    let percent = rng.gen_range(0..=100);   
+    let percent = rng.gen_range(0..100);   
     if percent < delay_chance {
-        println!("PACKET WILL BE DELAYED");
+        println!("Delaying packet...");
         return false;
     } 
     true
@@ -170,11 +162,10 @@ fn delay_decider(delay_chance: i32) -> bool {
 
 fn chopping_block(drop_chance: i32) -> bool {
     let mut rng = rand::thread_rng();
-    let percent = rng.gen_range(0..=100);   
+    let percent = rng.gen_range(0..100);   
     if percent < drop_chance {
-        // increment_packet_count("Proxy", 0, 0, 0, 1).unwrap();
-        update_csv(("Proxy".to_string(), 0, 0, 0, 1));
-        println!("PACKET DROPPED");
+        let _ = update_csv(("Proxy".to_string(), 0, 0, 0, 1));
+        println!("Dropping packet...");
         return false;
     } 
     true
